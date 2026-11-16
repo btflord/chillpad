@@ -20,6 +20,14 @@ This builds a universal `Chillpad.app`, copies it to `/Applications` and launche
 2. Scan the QR code in the Chillpad window with the iPhone camera.
 3. In Safari tap **Share → Add to Home Screen**. From then on Chillpad opens full screen from its own icon.
 
+### Disk image for other Macs
+
+```bash
+./scripts/make-dmg.sh
+```
+
+Builds `build/Chillpad-<version>.dmg`, a drag-to-Applications installer with the universal app (Apple silicon and Intel, macOS 13+). The app isn't notarized, so on another Mac the first launch needs **System Settings → Privacy & Security → Open Anyway**. The DMG includes a note that explains this.
+
 The menu bar icon shows the connection, and has Launch at Login, Pair a Phone and Reset Pairing.
 
 ## Gestures
