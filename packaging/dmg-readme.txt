@@ -6,21 +6,25 @@ Chillpad — install
 4. Scan the QR code with your iPhone camera, then in Safari tap Share → Add to Home Screen.
 
 
-If macOS says Chillpad "can't be opened" or "Apple could not verify" it
+"Apple could not verify Chillpad is free of malware"
 
-Chillpad isn't notarized by Apple, so the first launch needs one extra approval:
+Chillpad is a free, open-source app that isn't notarized by Apple (that needs a paid
+developer account), so macOS asks you to approve it once. Nothing is wrong with the app.
 
-1. Click Done in the warning.
+1. Click Done in the warning (not Move to Trash).
 2. Open System Settings → Privacy & Security.
-3. Scroll down to the message about Chillpad and click "Open Anyway", then confirm.
+3. Scroll down to "Chillpad was blocked…" and click Open Anyway.
+4. Enter your password, then click Open Anyway again.
 
-You only need to do this once.
+You only need to do this once. After that Chillpad opens normally.
 
-If you see "Chillpad is damaged and can't be opened", open Terminal and run:
 
-    xattr -dr com.apple.quarantine /Applications/Chillpad.app
+Prefer no warning at all? Install from Terminal instead:
 
-then open Chillpad again.
+    curl -fsSL https://raw.githubusercontent.com/btflord/chillpad/main/install.sh | bash
+
+It downloads the same app from GitHub and puts it in Applications. Source code:
+https://github.com/btflord/chillpad
 
 
 Requirements: macOS 13 Ventura or later. Runs natively on Apple silicon (M1 and later) and on Intel Macs.

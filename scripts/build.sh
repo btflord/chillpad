@@ -18,8 +18,13 @@ cp packaging/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp web/pad.html web/denied.html web/icon.png "$APP/Contents/Resources/web/"
 
 # Sign with a real identity if one exists (keeps the Accessibility grant across rebuilds), else ad hoc.
-IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | awk -F'"' '/Apple Development|Developer ID Application/ {print $2; exit}')
-codesign --force --options runtime --sign "${IDENTITY:--}" "$APP"
+# Prefer Developer ID (needed for notarization), then Apple Development, else ad hoc.
+IDS=$(security find-identity -v -p codesigning 2>/dev/null || true)
+IDENTITY=$(echo "$IDS" | awk -F'"' '/Developer ID Application/ {print $2; exit}')
+[ -n "$IDENTITY" ] || IDENTITY=$(echo "$IDS" | awk -F'"' '/Apple Development/ {print $2; exit}')
+TS=--timestamp=none
+[[ "$IDENTITY" == Developer\ ID* ]] && TS=--timestamp   # notarization requires a secure timestamp
+codesign --force --options runtime $TS --sign "${IDENTITY:--}" "$APP"
 echo "Built $APP (signed: ${IDENTITY:-ad hoc})"
 
 if [ "${1:-}" = "install" ]; then

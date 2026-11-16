@@ -8,7 +8,19 @@ iPhone (Safari) ── Wi‑Fi WebSocket ──▶ Chillpad.app ── CGEvent �
 
 ## Install
 
-Requires macOS 13 or later and the Xcode Command Line Tools (`xcode-select --install`).
+**Quickest, no security prompts.** Paste into Terminal:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/btflord/chillpad/main/install.sh | bash
+```
+
+**Or download the DMG** from [Releases](https://github.com/btflord/chillpad/releases/latest), open it and drag Chillpad into Applications. Chillpad isn't notarized by Apple, so the first launch shows "Apple could not verify Chillpad is free of malware". Click **Done**, then go to **System Settings → Privacy & Security** and click **Open Anyway**. You only do this once.
+
+Works on macOS 13 Ventura or later, natively on Apple silicon (M1 and later) and Intel.
+
+### Build from source
+
+Requires the Xcode Command Line Tools (`xcode-select --install`).
 
 ```bash
 ./scripts/build.sh install
@@ -26,7 +38,9 @@ This builds a universal `Chillpad.app`, copies it to `/Applications` and launche
 ./scripts/make-dmg.sh
 ```
 
-Builds `build/Chillpad-<version>.dmg`, a drag-to-Applications installer with the universal app (Apple silicon and Intel, macOS 13+). The app isn't notarized, so on another Mac the first launch needs **System Settings → Privacy & Security → Open Anyway**. The DMG includes a note that explains this.
+Builds `build/Chillpad-<version>.dmg`, a drag-to-Applications installer with the universal app. Without a Developer ID the image is left unsigned on purpose: macOS checks a signed but unnotarized disk image when it's opened and warns about it, while an unsigned one opens normally.
+
+With a **Developer ID Application** certificate in your keychain, both scripts sign with it automatically. Store notary credentials once with `xcrun notarytool store-credentials chillpad --apple-id <you> --team-id <team>`, then run `NOTARY_PROFILE=chillpad ./scripts/make-dmg.sh` to notarize and staple. A notarized DMG opens with no warning at all.
 
 The menu bar icon shows the connection, and has Launch at Login, Pair a Phone and Reset Pairing.
 

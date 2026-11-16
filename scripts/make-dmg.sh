@@ -67,5 +67,20 @@ hdiutil detach -quiet "$DEV" || { sleep 2; hdiutil detach -force -quiet "$DEV"; 
 hdiutil convert -quiet "$RW" -format ULFO -o "$OUT"
 rm -f "$RW"
 rm -rf "$STAGE"
-codesign --force --sign - "$OUT"
+
+# Signing the disk image only helps with a Developer ID. A signed but unnotarized image is
+# checked by Gatekeeper when it's opened and gets the "could not verify" warning, while an
+# unsigned image just opens. So: Developer ID → sign, notarize and staple; otherwise leave it unsigned.
+DEVID=$(security find-identity -v -p codesigning 2>/dev/null | awk -F'"' '/Developer ID Application/ {print $2; exit}')
+if [ -n "$DEVID" ]; then
+  codesign --force --timestamp --sign "$DEVID" "$OUT"
+  if [ -n "${NOTARY_PROFILE:-}" ]; then
+    # One-time setup: xcrun notarytool store-credentials <profile> --apple-id <id> --team-id <team>
+    xcrun notarytool submit "$OUT" --keychain-profile "$NOTARY_PROFILE" --wait
+    xcrun stapler staple "$OUT"
+    echo "Notarized and stapled."
+  else
+    echo "! Signed with $DEVID but not notarized. Set NOTARY_PROFILE to notarize."
+  fi
+fi
 echo "Built $OUT ($(du -h "$OUT" | cut -f1 | xargs))"
