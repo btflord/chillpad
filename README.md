@@ -58,6 +58,17 @@ The menu bar icon shows the connection, and has Launch at Login, Pair a Phone an
 
 The bottom bar has a keyboard (with esc, tab, arrows and sticky ⌘ ⌥ ⌃), Mission Control, volume and play/pause. Speed, acceleration, scroll speed, natural scrolling, touch prediction and haptics are in the settings sheet.
 
+## Voice with Juno
+
+If Juno (the voice dictation app) is installed on the Mac, a mic button appears on the phone:
+
+- **Hold** to dictate, release to type it into the focused app.
+- **Tap** to keep listening hands-free; tap again to finish.
+- **Slide up** while holding for a voice command (Juno's Command Mode).
+- **"Hey Juno"** wake listening can be turned on from the phone's settings sheet.
+
+Juno listens with the Mac's microphone and does the transcription and cleanup; Chillpad only sends press, release and command signals, and shows Juno's state and mic level on the phone. If Juno isn't running, the first press starts it. The two apps talk through macOS distributed notifications (`app.juno.remote` and `app.juno.state`), which stay on the Mac, and dictated text never passes through Chillpad.
+
 ## How it stays responsive
 
 - **No middlemen.** One native process receives the packets and posts the events. TCP has Nagle's algorithm off, so every packet leaves immediately.

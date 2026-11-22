@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         server.onActivity = { [weak self] label in self?.showActivity(label) }
         server.onFailure = { [weak self] msg in self?.state.failure = msg; self?.showWindow() }
         server.start(port: Env.port)
+        server.startVoice()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         let menu = NSMenu()

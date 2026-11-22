@@ -15,6 +15,8 @@ final class Server {
     private var listener: NWListener?
     private var connections: [ObjectIdentifier: Connection] = [:]
     private let pairing: Pairing
+    let juno = JunoBridge()
+    private var voiceState = ""   // latest ["vs", …] for phones that connect later
 
     /// Called on the main queue.
     var onPhones: (([PhoneInfo]) -> Void)?
@@ -22,6 +24,20 @@ final class Server {
     var onFailure: ((String) -> Void)?
 
     init(pairing: Pairing) { self.pairing = pairing }
+
+    /// Juno's availability and state go to every phone. Call on the main queue.
+    func startVoice() {
+        juno.onUpdate = { [weak self] msg in
+            guard let self else { return }
+            self.queue.async {
+                if msg.hasPrefix("[\"vs\"") { self.voiceState = msg }
+                for c in self.connections.values where c.session != nil { c.wsText(msg) }
+            }
+        }
+        juno.start()
+        let first = juno.snapshot()
+        queue.async { self.voiceState = first }
+    }
 
     func start(port: UInt16) {
         let tcp = NWProtocolTCP.Options()
@@ -116,8 +132,11 @@ final class Server {
             let s = PhoneSession(input: input, queue: queue) { [weak c] text in c?.wsText(text) }
             s.onActivity = { [weak self] label in self?.activity(label) }
             s.onInfo = { [weak self] in self?.publish(throttled: true) }
+            s.onVoice = { [weak self] action in DispatchQueue.main.async { self?.juno.send(action) } }
             c.session = s
             c.wsText("[\"hi\",{\"name\":\(Web.jsonString(pairing.computerName))}]")
+            if !voiceState.isEmpty { c.wsText(voiceState) }
+            DispatchQueue.main.async { self.juno.refreshAndPush() }   // Juno may have been installed since
             publish()
         default:
             c.http(404, "text/plain", Data("not found".utf8))

@@ -24,7 +24,14 @@ IDENTITY=$(echo "$IDS" | awk -F'"' '/Developer ID Application/ {print $2; exit}'
 [ -n "$IDENTITY" ] || IDENTITY=$(echo "$IDS" | awk -F'"' '/Apple Development/ {print $2; exit}')
 TS=--timestamp=none
 [[ "$IDENTITY" == Developer\ ID* ]] && TS=--timestamp   # notarization requires a secure timestamp
-codesign --force --options runtime $TS --sign "${IDENTITY:--}" "$APP"
+if [ -n "$IDENTITY" ]; then
+  codesign --force --options runtime $TS --sign "$IDENTITY" "$APP"
+else
+  # Ad hoc: an explicit designated requirement keyed on the bundle id keeps the Accessibility
+  # grant across rebuilds and updates (a plain ad-hoc signature pins it to this exact build).
+  codesign --force --options runtime --sign - --identifier app.chillpad.mac \
+    --requirements '=designated => identifier "app.chillpad.mac"' "$APP"
+fi
 echo "Built $APP (signed: ${IDENTITY:-ad hoc})"
 
 if [ "${1:-}" = "install" ]; then

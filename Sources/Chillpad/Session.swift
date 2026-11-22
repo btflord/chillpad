@@ -118,6 +118,10 @@ final class PhoneSession {
     var rtt: Int?
     var onActivity: ((String) -> Void)?
     var onInfo: (() -> Void)?
+    /// Mic button → Juno (press, release, command, cancel, wakeOn, wakeOff).
+    var onVoice: ((String) -> Void)?
+    private var voiceHeld = false
+    private static let voiceActions: Set<String> = ["press", "release", "command", "cancel", "wakeOn", "wakeOff"]
 
     private var pendMX = 0.0, pendMY = 0.0, pendMoveCoast = false
     private var pendSX = 0.0, pendSY = 0.0, pendScrollCoast = false
@@ -224,6 +228,12 @@ final class PhoneSession {
         case "p":
             reply("[\"p\",\(num(a))]")
             if let r = b as? NSNumber { rtt = r.intValue; onInfo?() }
+        case "v":
+            guard let act = a as? String, PhoneSession.voiceActions.contains(act) else { return }
+            if act == "press" { voiceHeld = true } else if act == "release" { voiceHeld = false }
+            onVoice?(act)
+            let label = ["press": "Voice", "command": "Voice command", "cancel": "Voice cancelled"][act]
+            if let label { onActivity?(label) }
         case "hello":
             device = String(((a as? String) ?? "iPhone").prefix(40))
             onInfo?()
@@ -233,6 +243,7 @@ final class PhoneSession {
 
     func close() {
         flush()
+        if voiceHeld { voiceHeld = false; onVoice?("release") }   // phone vanished mid-dictation
         timer?.cancel(); timer = nil
         pointer.end(); scroller.end()
         if scrolling { input.scroll(0, 0, phase: 4, momentum: 0); scrolling = false }

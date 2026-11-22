@@ -114,6 +114,28 @@
     flex: 1; height: 48px; border-radius: 15px; border: 1px solid var(--line); background: rgba(255,255,255,.045);
     color: var(--text); display: grid; place-items: center; padding: 0; font: inherit; touch-action: manipulation;
   }
+  /* ---------- voice (Juno) ---------- */
+  .bar .mic { display: none; flex: 1.25; color: #fff; background: linear-gradient(180deg, rgba(124,196,255,.22), rgba(124,196,255,.10)); border-color: rgba(124,196,255,.35); touch-action: none; }
+  .voice-on .bar .mic { display: grid; }
+  .voice-on .bar [data-act="mc"] { display: none; }
+  .bar .mic.live { background: linear-gradient(180deg, #ff5f57, #e0443c); border-color: transparent; }
+  .bar .mic.cmd { background: linear-gradient(180deg, #a78bfa, #7c5cf0); border-color: transparent; }
+  .vpill {
+    position: absolute; left: 50%; bottom: 16px; transform: translate(-50%, 10px); opacity: 0; pointer-events: none;
+    display: flex; align-items: center; gap: 10px; padding: 9px 16px 9px 13px; border-radius: 99px;
+    background: rgba(18,18,24,.92); border: 1px solid var(--line); font-size: 14px; font-weight: 600; white-space: nowrap;
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); transition: opacity .2s, transform .2s;
+  }
+  .vpill.show { opacity: 1; transform: translate(-50%, 0); }
+  .vpill .dotv { width: 9px; height: 9px; border-radius: 50%; background: #ff5f57; box-shadow: 0 0 12px #ff5f57; }
+  .vpill.cmd .dotv { background: #a78bfa; box-shadow: 0 0 12px #a78bfa; }
+  .vpill.busy .dotv { background: var(--accent); box-shadow: none; animation: vpulse .9s ease-in-out infinite; }
+  @keyframes vpulse { 50% { opacity: .25; } }
+  .vpill .bars { display: flex; gap: 3px; align-items: center; height: 18px; }
+  .vpill .bars i { width: 3px; height: 4px; border-radius: 2px; background: currentColor; opacity: .85; transition: height .07s linear; }
+  .vpill.busy .bars { display: none; }
+  .vpill small { color: var(--dim); font-weight: 500; font-size: 12.5px; }
+
   .bar button:active, .keys button:active, .keys button.on { background: rgba(124,196,255,.18); border-color: rgba(124,196,255,.35); }
   .bar svg, .keys svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -162,6 +184,7 @@
       <div class="row"><span class="fingers"><i></i><i></i><i></i></span><span><b>Swipe for Mission Control</b>← → spaces · ↓ app windows</span></div>
     </div>
     <div class="toast" id="toast"></div>
+    <div class="vpill" id="vpill"><span class="dotv"></span><span id="vtext">Listening</span><span class="bars" id="vbars"><i></i><i></i><i></i><i></i><i></i></span><small id="vhint"></small></div>
     <div class="offline" id="offline">
       <h2>Looking for your Mac…</h2>
       <p>Make sure Chillpad is running on the Mac and both devices are on the same Wi‑Fi.</p>
@@ -170,6 +193,7 @@
 
   <div class="bar" id="bar">
     <button data-act="kb" aria-label="Keyboard"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6 10h.01M9.5 10h.01M13 10h.01M16.5 10h.01M6 14h.01M18 14h.01M9 14h6"/></svg></button>
+    <button class="mic" id="mic" aria-label="Talk to Juno: hold to dictate, tap for hands-free, slide up for a command"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button>
     <button data-act="mc" aria-label="Mission Control"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="8" height="6.5" rx="1.5"/><rect x="13" y="4" width="8" height="6.5" rx="1.5"/><rect x="3" y="13.5" width="8" height="6.5" rx="1.5"/><rect x="13" y="13.5" width="8" height="6.5" rx="1.5"/></svg></button>
     <button data-act="voldown" aria-label="Volume down"><svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 12h4"/></svg></button>
     <button data-act="play" aria-label="Play or pause"><svg viewBox="0 0 24 24"><path d="M5 5.5v13l8-6.5zM16 6v12M20 6v12"/></svg></button>
@@ -201,6 +225,7 @@
   <div class="field"><label>Natural scrolling<small>Content follows your fingers</small></label><input type="checkbox" id="sNatural"></div>
   <div class="field"><label>Touch prediction<small>Stays a frame ahead of lag on fast moves</small></label><input type="checkbox" id="sPredict"></div>
   <div class="field"><label>Haptics<small>iOS 18 or later</small></label><input type="checkbox" id="sHaptics"></div>
+  <div class="field" id="wakeField" hidden><label>“Hey Juno”<small>Mac listens for the wake phrase</small></label><input type="checkbox" id="sWake"></div>
   <div class="tip" id="tip">Tip: in Safari tap Share → Add to Home Screen to use Chillpad full‑screen, like an app.</div>
 </div>
 
@@ -278,6 +303,8 @@
       let m; try { m = JSON.parse(e.data); } catch { return; }
       if (m[0] === 'p') { lastPong = performance.now(); lastRtt = lastPong - m[1]; $('rtt').textContent = Math.round(lastRtt) + ' ms'; }
       if (m[0] === 'hi') setConn('ok', `<b>${escapeHtml(m[1].name)}</b>`);
+      if (m[0] === 'vs') voiceState(m[1] || {});
+      if (m[0] === 'vl') voiceLevel(+m[1] || 0);
     };
     sock.onclose = () => { if (ws === sock) lost(); };
     sock.onerror = () => drop(sock);
@@ -540,6 +567,63 @@
 
   // ---------- toolbar ----------
   const kb = $('kb');
+  // ---------- voice: the mic button drives Juno on the Mac ----------
+  // Hold to dictate, tap for hands-free (tap again to finish), slide up while holding for a
+  // voice command. Juno listens with the Mac's microphone and types into the focused app.
+  const mic = $('mic'), vpill = $('vpill');
+  const bars = [...$('vbars').children];
+  let V = { installed: false, phase: 'idle', mode: 'dictation', handsFree: false, wake: false };
+  let micHeld = false, micY = 0, micCmd = false, levelT = 0;
+  function voiceState(s) {
+    const was = V.phase;
+    V = { ...V, ...s };
+    document.body.classList.toggle('voice-on', !!V.installed);
+    $('wakeField').hidden = !V.installed;
+    $('sWake').checked = !!V.wake;
+    if (was === 'recording' && V.phase === 'processing') haptic();
+    renderVoice();
+  }
+  function renderVoice() {
+    const rec = V.phase === 'recording', busy = V.phase === 'processing' || V.phase === 'starting';
+    const cmd = V.mode === 'command';
+    mic.classList.toggle('live', rec && !cmd);
+    mic.classList.toggle('cmd', rec && cmd);
+    vpill.classList.toggle('show', rec || busy);
+    vpill.classList.toggle('cmd', rec && cmd);
+    vpill.classList.toggle('busy', busy);
+    $('vtext').textContent = V.phase === 'starting' ? 'Starting Juno…' : busy ? (cmd ? 'Working…' : 'Writing…') : cmd ? 'Command' : 'Listening';
+    $('vhint').textContent = !rec ? '' : V.handsFree ? 'tap mic to finish' : (micHeld && !cmd ? '↑ command' : '');
+    if (!rec) voiceLevel(0);
+  }
+  function voiceLevel(l) {
+    const t = performance.now() / 160;
+    bars.forEach((b, i) => {
+      const wobble = 0.55 + 0.45 * Math.abs(Math.sin(t + i * 1.3));
+      b.style.height = (4 + Math.min(1, l * 1.6) * 14 * wobble) + 'px';
+    });
+  }
+  mic.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    try { mic.setPointerCapture(e.pointerId); } catch {}
+    micHeld = true; micCmd = false; micY = e.clientY;
+    send(['v', 'press']); haptic();
+    renderVoice();
+  });
+  mic.addEventListener('pointermove', (e) => {
+    if (!micHeld || micCmd || V.handsFree) return;
+    if (micY - e.clientY > 44) { micCmd = true; send(['v', 'command']); haptic(); toast('Voice command'); }
+  });
+  const micUp = () => {
+    if (!micHeld) return;
+    micHeld = false;
+    send(['v', 'release']);
+    renderVoice();
+  };
+  mic.addEventListener('pointerup', micUp);
+  mic.addEventListener('pointercancel', micUp);
+  mic.addEventListener('lostpointercapture', micUp);
+  $('sWake').addEventListener('change', (e) => send(['v', e.target.checked ? 'wakeOn' : 'wakeOff']));
+
   const actions = {
     kb: () => { kb.value = '  '; kb.focus({ preventScroll: true }); kb.setSelectionRange(2, 2); },
     kbdone: () => kb.blur(),
