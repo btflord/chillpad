@@ -105,7 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(withTitle: status, action: nil, keyEquivalent: "").isEnabled = false
         menu.addItem(.separator())
         add(menu, "Pair a Phone…", #selector(showWindowAction))
-        if !state.trusted { add(menu, "Allow Accessibility Access…", #selector(openAccessibility)) }
+        if !state.trusted { add(menu, "Fix Accessibility Access…", #selector(openAccessibility)) }
         menu.addItem(.separator())
         add(menu, "Launch at Login", #selector(toggleLogin)).state = state.launchAtLogin ? .on : .off
         add(menu, "Reset Pairing…", #selector(resetPairing))
@@ -156,7 +156,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         _ = AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
     }
 
+    /// Clicked by the user when Chillpad isn't trusted. macOS ties an Accessibility entry to the code
+    /// requirement recorded when the entry was created; an entry made for an older ad-hoc build stays
+    /// switched on in System Settings but no longer matches. Removing only Chillpad's own entry and
+    /// asking again creates a fresh one keyed on the bundle id, which survives future updates.
     @objc func openAccessibility() {
+        if !AXIsProcessTrusted() {
+            let reset = Process()
+            reset.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+            reset.arguments = ["reset", "Accessibility", Bundle.main.bundleIdentifier ?? "app.chillpad.mac"]
+            try? reset.run()
+            reset.waitUntilExit()
+        }
         requestAccessibility()
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
             NSWorkspace.shared.open(url)
@@ -236,9 +247,9 @@ struct PairView: View {
                 VStack(spacing: 0) {
                     row(icon: "hand.raised.fill",
                         title: "Accessibility",
-                        detail: state.trusted ? "Chillpad can move the pointer." : "Needed so your phone can move the pointer.",
+                        detail: state.trusted ? "Chillpad can move the pointer." : "Click Fix, then turn Chillpad on in the list.",
                         badge: state.trusted ? "Allowed" : nil, good: state.trusted) {
-                        if !state.trusted { Button("Allow…", action: openAccessibility).controlSize(.small) }
+                        if !state.trusted { Button("Fix…", action: openAccessibility).controlSize(.small).help("Clears Chillpad’s old permission entry and asks macOS again") }
                     }
                     Divider().padding(.leading, 40)
                     row(icon: "iphone",
